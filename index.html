@@ -12,6 +12,9 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap">
 <title>Weekly Budget</title>
 <style>
 :root{
@@ -22,6 +25,7 @@
   --shadow:0 1px 2px rgba(70,45,20,.05),0 6px 20px rgba(70,45,20,.06);
   --radius:20px;
   --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 @media (prefers-color-scheme: dark){
@@ -59,7 +63,7 @@ h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
 /* week nav */
 .weeknav{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
 .weeknav .mid{text-align:center}
-.weeknav .t{font-family:var(--serif);font-size:24px;font-weight:600}
+.weeknav .t{font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:-.02em}
 .weeknav .r{font-size:14px;color:var(--muted)}
 .iconbtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--card);box-shadow:var(--shadow);font-size:22px;display:grid;place-items:center}
 .iconbtn:disabled{opacity:.3}
@@ -71,9 +75,10 @@ h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
 .ringwrap .track{stroke:var(--card2)}
 .ringwrap .val{transition:stroke-dashoffset .6s ease, stroke .3s}
 .ringc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
-.ringc .big{font-family:var(--serif);font-size:40px;font-weight:600;letter-spacing:-.02em}
+.ringc .big{font-family:var(--mono);font-size:28px;font-weight:700;letter-spacing:-.02em;margin:2px 0}
 .ringc .lbl{font-size:14px;color:var(--muted)}
-.stats{text-align:center;font-size:15px;color:var(--muted)}
+.stats{text-align:center;font-size:15px;color:var(--muted);line-height:1.7}
+.stats > div{display:block}
 .stats b{color:var(--text);font-weight:600}
 .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
 .pill.good{background:var(--good-soft);color:var(--good)}
@@ -396,9 +401,9 @@ function renderWeek(){
   if (isCur){
     const daysLeft = 7 - dayIndex(t);
     const perDay = remaining > 0 ? Math.floor(remaining / daysLeft) : 0;
-    stats = `<b>${money(Math.max(0, remaining))}</b> left · <b>${daysLeft}</b> ${daysLeft === 1 ? 'day' : 'days'} to go · ~<b>${money(perDay)}</b> per day`;
+    stats = `<div><b>${money(Math.max(0, remaining))}</b> left</div><div><b>${daysLeft}</b> ${daysLeft === 1 ? 'day' : 'days'} to go</div><div>~<b>${money(perDay)}</b> per day</div>`;
   } else {
-    stats = remaining >= 0 ? `Week closed · <b>${money(remaining)}</b> went to savings` : `Week closed · <b>${money(-remaining)}</b> over budget`;
+    stats = remaining >= 0 ? `<div>Week closed</div><div><b>${money(remaining)}</b> went to savings</div>` : `<div>Week closed</div><div><b>${money(-remaining)}</b> over budget</div>`;
   }
 
   // Overspend warning for current week
