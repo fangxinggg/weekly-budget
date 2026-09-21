@@ -1,0 +1,934 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#F6F1EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1916" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Budget">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<title>Weekly Budget</title>
+<style>
+:root{
+  color-scheme: light dark;
+  --bg:#F6F1EA; --card:#FFFDF9; --card2:#F0E9DF; --text:#2B2622; --muted:#877D74; --line:#E7DED3;
+  --accent:#B8744F; --accent-soft:#EFDCCF; --on-accent:#FFFFFF;
+  --good:#5F9160; --good-soft:#DDEBD9; --warn:#C9922E; --warn-soft:#F6E7C8; --bad:#C0533F; --bad-soft:#F5D9D2;
+  --shadow:0 1px 2px rgba(70,45,20,.05),0 6px 20px rgba(70,45,20,.06);
+  --radius:20px;
+  --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1B1815; --card:#25211D; --card2:#2E2924; --text:#F2EBE2; --muted:#A99F95; --line:#3A342E;
+    --accent:#D58E67; --accent-soft:#44342A; --on-accent:#1B1815;
+    --good:#86B784; --good-soft:#2D3A2B; --warn:#E2B458; --warn-soft:#41361F; --bad:#E07A66; --bad-soft:#452924;
+    --shadow:0 1px 2px rgba(0,0,0,.3);
+  }
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:16px;line-height:1.4}
+body{min-height:100vh;padding-top:env(safe-area-inset-top)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.app{max-width:520px;margin:0 auto;padding:12px 16px calc(120px + env(safe-area-inset-bottom))}
+h1{font-family:var(--serif);font-weight:600;font-size:28px;margin:8px 4px 16px;letter-spacing:-.01em}
+h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+.card{background:var(--card);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:14px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.tab{display:none}
+.tab.active{display:block}
+.num{font-variant-numeric:tabular-nums}
+
+/* banners */
+.banner{border-radius:16px;padding:12px 14px;margin-bottom:14px;font-size:14px;display:flex;gap:10px;align-items:center}
+.banner .grow{flex:1}
+.banner.info{background:var(--accent-soft)}
+.banner.warn{background:var(--warn-soft)}
+.banner.bad{background:var(--bad-soft)}
+.banner button{border:0;background:var(--card);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600;white-space:nowrap}
+.banner .x{background:transparent;padding:4px 6px;font-size:18px;line-height:1;color:var(--muted)}
+
+/* week nav */
+.weeknav{display:flex;align-items:center;justify-content:space-between;margin:4px 0 12px}
+.weeknav .mid{text-align:center}
+.weeknav .t{font-family:var(--serif);font-size:24px;font-weight:600}
+.weeknav .r{font-size:14px;color:var(--muted)}
+.iconbtn{width:44px;height:44px;border-radius:50%;border:0;background:var(--card);box-shadow:var(--shadow);font-size:22px;display:grid;place-items:center}
+.iconbtn:disabled{opacity:.3}
+
+/* ring */
+.ringwrap{position:relative;width:230px;height:230px;margin:6px auto 10px}
+.ringwrap svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ringwrap circle{fill:none;stroke-width:16;stroke-linecap:round}
+.ringwrap .track{stroke:var(--card2)}
+.ringwrap .val{transition:stroke-dashoffset .6s ease, stroke .3s}
+.ringc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ringc .big{font-family:var(--serif);font-size:40px;font-weight:600;letter-spacing:-.02em}
+.ringc .lbl{font-size:14px;color:var(--muted)}
+.stats{text-align:center;font-size:15px;color:var(--muted)}
+.stats b{color:var(--text);font-weight:600}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+
+/* list */
+.dayh{font-size:13px;color:var(--muted);font-weight:600;margin:14px 2px 4px;display:flex;justify-content:space-between}
+.dayh:first-child{margin-top:0}
+.row{display:flex;align-items:center;gap:12px;padding:10px 2px;border:0;background:none;width:100%;text-align:left;border-bottom:1px solid var(--line)}
+.row:last-child{border-bottom:0}
+.badge{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:15px;color:#fff;flex:none}
+.row .mid{flex:1;min-width:0}
+.row .cat{font-weight:600}
+.row .note{font-size:14px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .amt{font-weight:600;font-variant-numeric:tabular-nums}
+.empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:15px}
+
+/* savings */
+.hero{text-align:center;padding:26px 18px}
+.hero .big{font-family:var(--serif);font-size:52px;font-weight:600;letter-spacing:-.02em;color:var(--good)}
+.chartbox{position:relative;height:240px}
+.chartbox.sm{height:200px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.hist .row{cursor:default}
+.hist .note{white-space:normal}
+.delta.up{color:var(--good)} .delta.down{color:var(--bad)}
+
+/* insights */
+.donutwrap{position:relative;height:220px}
+.donutc{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.donutc .big{font-family:var(--serif);font-size:28px;font-weight:600}
+.catlist .row{padding:9px 2px}
+.bar{height:6px;border-radius:3px;background:var(--card2);margin-top:6px;overflow:hidden}
+.bar > span{display:block;height:100%;border-radius:3px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kpi{background:var(--card2);border-radius:14px;padding:12px}
+.kpi .v{font-family:var(--serif);font-size:22px;font-weight:600;margin-top:2px}
+.kpi .s{font-size:13px;color:var(--muted)}
+
+/* settings */
+.field{display:flex;align-items:center;gap:10px}
+.input{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:12px;padding:12px 14px;font-size:16px;outline:none}
+.input:focus{border-color:var(--accent)}
+.btn{border:0;border-radius:14px;padding:13px 16px;font-weight:600;font-size:15px;background:var(--card2)}
+.btn.primary{background:var(--accent);color:var(--on-accent)}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn.block{width:100%;display:block}
+.btn:disabled{opacity:.4;cursor:default}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.catedit{display:flex;align-items:center;gap:10px;padding:6px 0}
+.catedit .input{padding:10px 12px}
+.catedit .del{border:0;background:none;color:var(--bad);font-size:14px;font-weight:600;padding:8px}
+.toggle{position:relative;width:52px;height:32px;flex:none}
+.toggle input{opacity:0;width:0;height:0}
+.toggle span{position:absolute;inset:0;background:var(--card2);border-radius:999px;transition:.2s}
+.toggle span:before{content:"";position:absolute;width:26px;height:26px;left:3px;top:3px;background:#fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:.2s}
+.toggle input:checked + span{background:var(--good)}
+.toggle input:checked + span:before{transform:translateX(20px)}
+.setrow{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hint{font-size:13px;color:var(--muted);margin-top:8px}
+
+/* tab bar */
+.tabbar{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb, var(--card) 92%, transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 8px calc(6px + env(safe-area-inset-bottom));z-index:20}
+.tabbar .in{max-width:520px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr 86px 1fr 1fr;align-items:end}
+.tb{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--muted);padding:6px 0;min-height:50px;justify-content:center}
+.tb svg{width:24px;height:24px}
+.tb.active{color:var(--accent)}
+.addbtn{justify-self:center;width:70px;height:70px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);font-size:36px;font-weight:300;line-height:1;box-shadow:0 6px 18px rgba(184,116,79,.35);transform:translateY(-18px);display:grid;place-items:center}
+.addbtn:active{transform:translateY(-16px) scale(.96)}
+
+/* sheet */
+.backdrop{position:fixed;inset:0;background:rgba(20,14,10,.38);opacity:0;pointer-events:none;transition:opacity .2s;z-index:40}
+.backdrop.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:41;transform:translateY(105%);transition:transform .25s ease,visibility 0s .25s;visibility:hidden;max-height:92vh;overflow:auto}
+.sheet.open{transform:translateY(0);visibility:visible;transition:transform .25s ease}
+.sheet .in{max-width:520px;margin:0 auto;background:var(--card);border-radius:24px 24px 0 0;padding:10px 18px calc(22px + env(safe-area-inset-bottom))}
+.sheethead{display:flex;align-items:center;justify-content:space-between;padding:4px 0 10px}
+.sheethead .ttl{font-weight:700}
+.linkbtn{border:0;background:none;color:var(--muted);font-size:16px;padding:8px 4px}
+.savebtn{border:0;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:9px 20px;font-weight:700;font-size:16px}
+.amountbox{display:flex;align-items:baseline;justify-content:center;gap:6px;padding:10px 0 16px}
+.amountbox .cur{font-family:var(--serif);font-size:30px;color:var(--muted)}
+.amountbox input{font-family:var(--serif);font-size:52px;font-weight:600;border:0;background:none;outline:none;width:6ch;text-align:left;padding:0;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.chip{border:2px solid transparent;background:var(--card2);border-radius:999px;padding:10px 14px;font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
+.chip i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.chip.sel{border-color:var(--text);background:var(--card)}
+.chips.err .chip{border-color:var(--bad-soft)}
+.formgrid{display:grid;grid-template-columns:1fr;gap:10px}
+.lbl2{font-size:13px;color:var(--muted);font-weight:600;margin:2px 2px 4px}
+.shake{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(100px + env(safe-area-inset-bottom));transform:translate(-50%,20px);background:var(--text);color:var(--bg);padding:12px 16px;border-radius:14px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:60;display:flex;gap:14px;align-items:center;max-width:92vw}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{border:0;background:none;color:var(--accent);font-weight:700;padding:0}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- WEEK -->
+  <section class="tab active" id="tab-week" aria-label="This week"></section>
+  <!-- SAVINGS -->
+  <section class="tab" id="tab-savings" aria-label="Savings"></section>
+  <!-- INSIGHTS -->
+  <section class="tab" id="tab-insights" aria-label="Insights"></section>
+  <!-- SETTINGS -->
+  <section class="tab" id="tab-settings" aria-label="Settings"></section>
+</div>
+
+<nav class="tabbar" aria-label="Main">
+  <div class="in">
+    <button class="tb active" data-tab="week" aria-label="Week">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 8.5 8.5"/></svg>Week</button>
+    <button class="tb" data-tab="savings" aria-label="Savings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V13M10 20V8M16 20v-5M22 20H2"/><path d="M4 9l6-4 6 5 5-4"/></svg>Savings</button>
+    <button class="addbtn" data-action="add" aria-label="Add expense">+</button>
+    <button class="tb" data-tab="insights" aria-label="Insights">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5V12l6 6"/></svg>Insights</button>
+    <button class="tb" data-tab="settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>Settings</button>
+  </div>
+</nav>
+
+<div class="backdrop" id="backdrop" data-action="close-sheet"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="in">
+    <div class="sheethead">
+      <button class="linkbtn" data-action="close-sheet">Cancel</button>
+      <div class="ttl" id="sheetTitle">Add expense</div>
+      <button class="savebtn" data-action="save-expense">Save</button>
+    </div>
+    <div class="amountbox">
+      <span class="cur">S$</span>
+      <input id="fAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-label="Amount in SGD">
+    </div>
+    <div class="chips" id="fCats" role="radiogroup" aria-label="Category"></div>
+    <div class="formgrid">
+      <div><div class="lbl2">Note (optional)</div><input id="fNote" class="input" type="text" maxlength="80" placeholder="e.g. Flat white" enterkeyhint="done"></div>
+      <div><div class="lbl2">Date</div><input id="fDate" class="input" type="date"></div>
+      <button class="btn danger block" id="fDelete" data-action="delete-expense" style="display:none;margin-top:6px">Delete expense</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"><span id="toastMsg"></span><button id="toastAct" style="display:none">Undo</button></div>
+<input type="file" id="importFile" accept="application/json,.json" style="display:none">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.js"></script>
+<script>
+"use strict";
+/* ============================================================
+   Weekly Budget — personal expense tracker (PWA)
+   All money is stored as integer cents to avoid rounding errors.
+   Weeks run Monday–Sunday in Singapore time (Asia/Singapore).
+   ============================================================ */
+
+const TZ = 'Asia/Singapore';
+const KEY_REAL = 'wkb.data.v1', KEY_SAMPLE = 'wkb.sample.v1', KEY_MODE = 'wkb.mode';
+const PALETTE = ['#B8744F','#8B6A52','#5E87A8','#C9922E','#8F72A8','#8A8078','#C0697E','#4E9A96','#5F9160','#6B7FB8'];
+const DEFAULT_CATS = ['Food','Coffee','Transport','Shopping','Entertainment','Others'];
+
+/* ---------- Date helpers (all dates are 'YYYY-MM-DD' strings in SG time) ---------- */
+const sgFmt = new Intl.DateTimeFormat('en-CA', {timeZone: TZ, year:'numeric', month:'2-digit', day:'2-digit'});
+function todaySG(){ return sgFmt.format(new Date()); }
+function parseD(s){ const [y,m,d] = s.split('-').map(Number); return new Date(Date.UTC(y, m-1, d, 12)); }
+function fmtISO(dt){ return dt.toISOString().slice(0,10); }
+function addDays(s, n){ const d = parseD(s); d.setUTCDate(d.getUTCDate() + n); return fmtISO(d); }
+function weekStart(s){ const d = parseD(s); const idx = (d.getUTCDay() + 6) % 7; return addDays(s, -idx); } // Monday
+function dayIndex(s){ return (parseD(s).getUTCDay() + 6) % 7; } // Mon=0 … Sun=6
+function daysBetween(a, b){ return Math.round((parseD(b) - parseD(a)) / 864e5); }
+const dFmt = (opts) => new Intl.DateTimeFormat('en-SG', Object.assign({timeZone:'UTC'}, opts));
+const fDayMon = dFmt({day:'numeric', month:'short'});
+const fWeekday = dFmt({weekday:'short', day:'numeric', month:'short'});
+function prettyDay(s){ const t = todaySG(); if (s === t) return 'Today'; if (s === addDays(t,-1)) return 'Yesterday'; return fWeekday.format(parseD(s)); }
+function weekRange(wk){
+  const end = addDays(wk, 6), a = parseD(wk), b = parseD(end);
+  if (a.getUTCMonth() === b.getUTCMonth()) return a.getUTCDate() + ' – ' + fDayMon.format(b);
+  return fDayMon.format(a) + ' – ' + fDayMon.format(b);
+}
+
+/* ---------- Money ---------- */
+function money(c, opts = {}){
+  const neg = c < 0, v = Math.abs(c) / 100;
+  const s = v.toLocaleString('en-SG', {minimumFractionDigits: opts.round ? 0 : 2, maximumFractionDigits: opts.round ? 0 : 2});
+  return (neg ? '−' : (opts.sign && c > 0 ? '+' : '')) + 'S$' + s;
+}
+function toCents(str){
+  const n = parseFloat(String(str).replace(/[^0-9.]/g, ''));
+  return isFinite(n) ? Math.round(n * 100) : NaN;
+}
+
+/* ---------- Utils ---------- */
+const $ = (sel) => document.querySelector(sel);
+function esc(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); return true; } catch(e){ toast('Could not save — storage is full or blocked'); return false; } }
+
+/* ---------- State ---------- */
+let mode = lsGet(KEY_MODE) === 'sample' ? 'sample' : 'real';
+let S = null;
+
+function defaultState(){
+  const t = todaySG(), wk = weekStart(t);
+  return {
+    version: 1, createdAt: t, startWeek: wk,
+    budgets: [{from: wk, amount: 15000}],        // budget history: each entry applies from that week onward
+    categories: DEFAULT_CATS.map((n, i) => ({id: 'c' + i, name: n, color: PALETTE[i]})),
+    expenses: [],                                  // {id, amount(cents), catId, note, date, createdAt}
+    lastBackup: null, reminderSnoozeUntil: null, lastCatId: null
+  };
+}
+function validState(d){
+  return d && Array.isArray(d.expenses) && Array.isArray(d.categories) && d.categories.length > 0 &&
+         Array.isArray(d.budgets) && d.budgets.length > 0 && typeof d.startWeek === 'string';
+}
+function load(){
+  const key = mode === 'sample' ? KEY_SAMPLE : KEY_REAL;
+  let d = null;
+  try { d = JSON.parse(lsGet(key)); } catch(e){}
+  if (!validState(d)) { d = mode === 'sample' ? sampleState() : defaultState(); S = d; save(); }
+  S = d;
+}
+function save(){ lsSet(mode === 'sample' ? KEY_SAMPLE : KEY_REAL, JSON.stringify(S)); }
+
+function cat(id){ return S.categories.find(c => c.id === id) || {id, name: 'Unknown', color: '#999'}; }
+function budgetFor(wk){
+  const list = [...S.budgets].sort((a, b) => a.from < b.from ? -1 : 1);
+  let amt = list[0].amount;
+  for (const b of list) if (b.from <= wk) amt = b.amount;
+  return amt;
+}
+function spentByWeek(){
+  const m = {};
+  for (const e of S.expenses){ const wk = weekStart(e.date); m[wk] = (m[wk] || 0) + e.amount; }
+  return m;
+}
+function expensesInWeek(wk){
+  const end = addDays(wk, 6);
+  return S.expenses.filter(e => e.date >= wk && e.date <= end);
+}
+
+/* ---------- The ledger: rolls each finished week into savings ----------
+   For every COMPLETED week (Mon–Sun, before the current week):
+     leftover = budget − spent
+     savings += leftover   (can be negative when overspent)
+     savings never goes below 0 — any overspend beyond savings is recorded as `shortfall`.
+   Computed from scratch every time, so it's always correct no matter when the app is opened. */
+function firstWeek(){
+  let first = S.startWeek;
+  for (const e of S.expenses){ const wk = weekStart(e.date); if (wk < first) first = wk; }
+  return first;
+}
+function ledger(){
+  const cur = weekStart(todaySG());
+  const spent = spentByWeek();
+  const weeks = [];
+  let savings = 0;
+  for (let wk = firstWeek(); wk < cur; wk = addDays(wk, 7)){
+    const s = spent[wk] || 0, budget = budgetFor(wk), leftover = budget - s;
+    let applied = leftover, shortfall = 0;
+    if (savings + leftover < 0){ shortfall = -(savings + leftover); applied = -savings; }
+    savings += applied;
+    weeks.push({wk, spent: s, budget, leftover, applied, shortfall, savingsAfter: savings});
+  }
+  return {weeks, savings, cur};
+}
+
+/* ---------- UI state ---------- */
+let currentTab = 'week';
+let viewWeek = weekStart(todaySG());
+let editingId = null, selCat = null;
+let lastToday = todaySG();
+const charts = {};
+
+/* ---------- Rendering ---------- */
+function render(){
+  if (currentTab === 'week') renderWeek();
+  else if (currentTab === 'savings') renderSavings();
+  else if (currentTab === 'insights') renderInsights();
+  else renderSettings();
+}
+
+function sampleBanner(){
+  return mode === 'sample'
+    ? `<div class="banner info"><div class="grow">You're viewing <b>sample data</b>. Your real data is safe.</div><button data-action="sample-off">Exit</button></div>` : '';
+}
+function backupBanner(){
+  if (mode !== 'real' || S.expenses.length === 0) return '';
+  const t = todaySG();
+  if (S.reminderSnoozeUntil && S.reminderSnoozeUntil > t) return '';
+  const base = S.lastBackup || S.createdAt;
+  const days = daysBetween(base, t);
+  if (days <= 30) return '';
+  const msg = S.lastBackup ? `It's been ${days} days since your last backup.` : `You haven't backed up yet.`;
+  return `<div class="banner warn"><div class="grow">${msg} A quick backup keeps your records safe.</div><button data-action="export-json">Back up</button><button class="x" data-action="snooze-backup" aria-label="Remind me later">×</button></div>`;
+}
+
+function renderWeek(){
+  const t = todaySG(), cur = weekStart(t), wk = viewWeek;
+  const isCur = wk === cur;
+  const budget = budgetFor(wk);
+  const list = expensesInWeek(wk).sort((a, b) => (b.date + b.createdAt) < (a.date + a.createdAt) ? -1 : 1);
+  const spent = list.reduce((s, e) => s + e.amount, 0);
+  const remaining = budget - spent;
+  const frac = Math.max(0, Math.min(1, remaining / budget));
+  let color = css('--good'), status = ['good', 'On track'];
+  if (remaining < 0){ color = css('--bad'); status = ['bad', 'Over budget']; }
+  else if (remaining / budget < 0.3){ color = css('--warn'); status = ['warn', 'Running low']; }
+  const R = 96, C = 2 * Math.PI * R;
+  const dash = remaining < 0 ? 0 : C * (1 - frac);
+
+  let title = isCur ? 'This week' : (wk === addDays(cur, -7) ? 'Last week' : 'Week of ' + fDayMon.format(parseD(wk)));
+  let stats;
+  if (isCur){
+    const daysLeft = 7 - dayIndex(t);
+    const perDay = remaining > 0 ? Math.floor(remaining / daysLeft) : 0;
+    stats = `<b>${money(Math.max(0, remaining))}</b> left · <b>${daysLeft}</b> ${daysLeft === 1 ? 'day' : 'days'} to go · ~<b>${money(perDay)}</b> per day`;
+  } else {
+    stats = remaining >= 0 ? `Week closed · <b>${money(remaining)}</b> went to savings` : `Week closed · <b>${money(-remaining)}</b> over budget`;
+  }
+
+  // Overspend warning for current week
+  let warn = '';
+  if (isCur && remaining < 0){
+    const L = ledger(), over = -remaining;
+    if (over > L.savings){
+      warn = `<div class="banner bad"><div class="grow">You're ${money(over)} over this week, which is more than your savings (${money(L.savings)}). Savings will bottom out at S$0.00 on Monday.</div></div>`;
+    } else {
+      warn = `<div class="banner warn"><div class="grow">You're ${money(over)} over this week. That amount will be taken from savings on Monday.</div></div>`;
+    }
+  }
+
+  // Grouped list
+  let rows = '';
+  if (!list.length){
+    rows = `<div class="empty">${isCur ? 'No expenses yet this week.<br>Tap <b>+</b> to add one.' : 'No expenses this week.'}</div>`;
+  } else {
+    let lastDay = null;
+    const dayTotals = {};
+    list.forEach(e => dayTotals[e.date] = (dayTotals[e.date] || 0) + e.amount);
+    for (const e of list){
+      if (e.date !== lastDay){
+        if (lastDay !== null) rows += `</div>`;
+        rows += `<div class="dayh"><span>${prettyDay(e.date)}</span><span class="num">${money(dayTotals[e.date])}</span></div><div>`;
+        lastDay = e.date;
+      }
+      const c = cat(e.catId);
+      rows += `<button class="row" data-action="edit" data-id="${e.id}">
+        <span class="badge" style="background:${c.color}">${esc(c.name.charAt(0).toUpperCase())}</span>
+        <span class="mid"><div class="cat">${esc(c.name)}</div>${e.note ? `<div class="note">${esc(e.note)}</div>` : ''}</span>
+        <span class="amt">${money(e.amount)}</span></button>`;
+    }
+    rows += `</div>`;
+  }
+
+  $('#tab-week').innerHTML = `
+    ${sampleBanner()}${backupBanner()}
+    <div class="weeknav">
+      <button class="iconbtn" data-action="prev-week" aria-label="Previous week">‹</button>
+      <div class="mid"><div class="t">${title}</div><div class="r">${weekRange(wk)}</div></div>
+      <button class="iconbtn" data-action="next-week" aria-label="Next week" ${isCur ? 'disabled' : ''}>›</button>
+    </div>
+    <div class="card">
+      <div class="ringwrap">
+        <svg viewBox="0 0 220 220" aria-hidden="true">
+          <circle class="track" cx="110" cy="110" r="${R}"/>
+          <circle class="val" cx="110" cy="110" r="${R}" stroke="${color}" stroke-dasharray="${C}" stroke-dashoffset="${remaining < 0 ? 0 : dash}"/>
+        </svg>
+        <div class="ringc">
+          <div class="lbl">${remaining < 0 ? 'over by' : 'left'}</div>
+          <div class="big num" style="color:${remaining < 0 ? color : 'inherit'}">${money(Math.abs(remaining))}</div>
+          <div class="lbl">spent ${money(spent)} of ${money(budget, {round: budget % 100 === 0})}</div>
+          <div style="margin-top:8px"><span class="pill ${status[0]}">${isCur ? status[1] : (remaining >= 0 ? 'Saved' : 'Overspent')}</span></div>
+        </div>
+      </div>
+      <div class="stats">${stats}</div>
+    </div>
+    ${warn}
+    <div class="card">${rows}</div>`;
+}
+
+function destroyChart(k){ if (charts[k]){ charts[k].destroy(); delete charts[k]; } }
+function chartsReady(){
+  if (typeof Chart === 'undefined') return false;
+  Chart.defaults.font.family = css('--sans') || 'system-ui';
+  Chart.defaults.color = css('--muted');
+  Chart.defaults.borderColor = css('--line');
+  return true;
+}
+const noCharts = `<div class="empty">Charts need one online visit to load.<br>Open the app once with internet and they'll work offline after that.</div>`;
+
+function renderSavings(){
+  const L = ledger(), t = todaySG();
+  const curBudget = budgetFor(L.cur);
+  const curSpent = (spentByWeek()[L.cur] || 0);
+  const pending = curBudget - curSpent;
+  const totalSaved = L.weeks.reduce((s, w) => s + Math.max(0, w.leftover), 0);
+  const underCount = L.weeks.filter(w => w.leftover >= 0).length;
+
+  // Last 12 weeks (only from the first tracked week)
+  const fw = firstWeek(); const wks = [];
+  for (let i = 11; i >= 0; i--){ const wk = addDays(L.cur, -7 * i); if (wk >= fw) wks.push(wk); }
+  const spent = spentByWeek();
+
+  const hist = [...L.weeks].reverse().slice(0, 12).map(w => `
+    <div class="row">
+      <span class="mid"><div class="cat">${weekRange(w.wk)}</div><div class="note">Spent ${money(w.spent)} of ${money(w.budget)}${w.shortfall ? ` · ${money(w.shortfall)} not covered by savings` : ''}</div></span>
+      <span class="amt delta ${w.applied >= 0 ? 'up' : 'down'}">${money(w.applied, {sign: true})}</span>
+    </div>`).join('');
+
+  $('#tab-savings').innerHTML = `
+    ${sampleBanner()}
+    <h1>Savings</h1>
+    <div class="card hero">
+      <h2>Total savings</h2>
+      <div class="big num">${money(L.savings)}</div>
+      <div class="muted small" style="margin-top:6px">${L.weeks.length ? `From ${L.weeks.length} completed ${L.weeks.length === 1 ? 'week' : 'weeks'} · under budget ${underCount} of ${L.weeks.length}` : 'Your first week closes Sunday night'}</div>
+      <div style="margin-top:12px"><span class="pill ${pending >= 0 ? 'good' : 'bad'}">This week so far: ${money(pending, {sign: true})} · added Monday</span></div>
+    </div>
+    <div class="card">
+      <h2>Last ${wks.length} ${wks.length === 1 ? 'week' : 'weeks'}</h2>
+      ${typeof Chart === 'undefined' ? noCharts : `<div class="chartbox"><canvas id="chWeeks" aria-label="Weekly spending vs budget"></canvas></div>
+      <div class="legend"><span><i style="background:${css('--accent')}"></i>Spent</span><span><i style="background:${css('--good')}"></i>Saved</span><span><i style="background:${css('--bad')}"></i>Over</span><span><i style="background:${css('--muted')};height:2px;vertical-align:3px"></i>Budget</span></div>`}
+    </div>
+    <div class="card">
+      <h2>Savings over time</h2>
+      ${typeof Chart === 'undefined' ? noCharts : (L.weeks.length ? `<div class="chartbox sm"><canvas id="chCum" aria-label="Cumulative savings"></canvas></div>` : `<div class="empty">This chart fills in after your first full week.</div>`)}
+    </div>
+    <div class="card hist">
+      <h2>Week by week</h2>
+      ${hist || `<div class="empty">Nothing here yet — finished weeks will appear here.</div>`}
+    </div>`;
+
+  if (!chartsReady()) return;
+  const good = css('--good'), bad = css('--bad'), acc = css('--accent'), muted = css('--muted');
+  const labels = wks.map(w => w === L.cur ? 'This wk' : fDayMon.format(parseD(w)));
+  const sp = wks.map(w => spent[w] || 0), bu = wks.map(w => budgetFor(w));
+  destroyChart('weeks');
+  charts.weeks = new Chart($('#chWeeks'), {
+    data: {
+      labels,
+      datasets: [
+        {type: 'bar', label: 'Spent', data: sp.map((s, i) => Math.min(s, bu[i]) / 100), backgroundColor: acc, stack: 's', borderRadius: 4, order: 2},
+        {type: 'bar', label: 'Over budget', data: sp.map((s, i) => Math.max(0, s - bu[i]) / 100), backgroundColor: bad, stack: 's', borderRadius: 4, order: 2},
+        {type: 'bar', label: 'Saved', data: sp.map((s, i) => Math.max(0, bu[i] - s) / 100),
+          backgroundColor: wks.map(w => w === L.cur ? good + '55' : good), stack: 's', borderRadius: 4, order: 2},
+        {type: 'line', label: 'Budget', data: bu.map(b => b / 100), borderColor: muted, borderDash: [5, 4], borderWidth: 1.5, pointRadius: 0, stack: 'b', stepped: 'middle', order: 1}
+      ]
+    },
+    options: {
+      maintainAspectRatio: false, animation: {duration: 300},
+      interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: false}, tooltip: {callbacks: {
+        label: (c) => c.raw ? ` ${c.dataset.label}${c.label === 'This wk' && c.dataset.label === 'Saved' ? ' (so far left)' : ''}: S$${Number(c.raw).toFixed(2)}` : null
+      }}},
+      scales: {x: {stacked: true, grid: {display: false}, ticks: {maxRotation: 0, autoSkip: true, font: {size: 11}}},
+               y: {stacked: true, beginAtZero: true, ticks: {callback: v => 'S$' + v}, grid: {color: css('--line')}}}
+    }
+  });
+
+  destroyChart('cum');
+  if (L.weeks.length){
+    const pts = [{x: 'Start', y: 0}].concat(L.weeks.map(w => ({x: fDayMon.format(parseD(addDays(w.wk, 6))), y: w.savingsAfter / 100})));
+    const ctx = $('#chCum').getContext('2d');
+    const grad = ctx.createLinearGradient(0, 0, 0, 200); grad.addColorStop(0, good + '55'); grad.addColorStop(1, good + '00');
+    charts.cum = new Chart(ctx, {
+      type: 'line',
+      data: {labels: pts.map(p => p.x), datasets: [{label: 'Savings', data: pts.map(p => p.y), borderColor: good, backgroundColor: grad, fill: true, tension: .3, pointRadius: 3, pointBackgroundColor: good, borderWidth: 2}]},
+      options: {maintainAspectRatio: false, animation: {duration: 300},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ' Savings: S$' + Number(c.raw).toFixed(2)}}},
+        scales: {x: {grid: {display: false}, ticks: {maxRotation: 0, autoSkip: true, font: {size: 11}}}, y: {beginAtZero: true, ticks: {callback: v => 'S$' + v}, grid: {color: css('--line')}}}}
+    });
+  }
+}
+
+function catTotals(wk){
+  const m = {};
+  for (const e of expensesInWeek(wk)) m[e.catId] = (m[e.catId] || 0) + e.amount;
+  return m;
+}
+function renderInsights(){
+  const t = todaySG(), cur = weekStart(t), prev = addDays(cur, -7);
+  const now = catTotals(cur), last = catTotals(prev);
+  const totNow = Object.values(now).reduce((a, b) => a + b, 0);
+  const totLast = Object.values(last).reduce((a, b) => a + b, 0);
+  const ids = Object.keys(now).sort((a, b) => now[b] - now[a]);
+  const top = ids[0];
+  const daysIn = dayIndex(t) + 1;
+
+  let topCard = `<div class="empty">No spending yet this week.</div>`;
+  if (top){
+    const c = cat(top), diff = now[top] - (last[top] || 0);
+    topCard = `
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="badge" style="background:${c.color};width:44px;height:44px;font-size:18px">${esc(c.name.charAt(0))}</span>
+        <div><div style="font-family:var(--serif);font-size:22px;font-weight:600">${esc(c.name)}</div>
+        <div class="muted small">${money(now[top])} · ${Math.round(now[top] / totNow * 100)}% of this week's spending</div></div>
+      </div>
+      <div class="hint" style="font-size:14px">${last[top] ? `Last week you spent ${money(last[top])} on ${esc(c.name)} — that's <b class="delta ${diff > 0 ? 'down' : 'up'}">${diff > 0 ? money(diff) + ' more' : diff < 0 ? money(-diff) + ' less' : 'the same'}</b> so far.` : `You didn't spend on ${esc(c.name)} last week.`}</div>`;
+  }
+
+  const allIds = [...new Set([...Object.keys(now), ...Object.keys(last)])].sort((a, b) => (now[b] || 0) - (now[a] || 0));
+  const maxV = Math.max(1, ...allIds.map(i => Math.max(now[i] || 0, last[i] || 0)));
+  const catRows = allIds.map(id => {
+    const c = cat(id), a = now[id] || 0, b = last[id] || 0, d = a - b;
+    return `<div class="row"><span class="badge" style="background:${c.color}">${esc(c.name.charAt(0))}</span>
+      <span class="mid"><div style="display:flex;justify-content:space-between"><span class="cat">${esc(c.name)}</span><span class="amt">${money(a)}</span></div>
+      <div class="bar"><span style="width:${a / maxV * 100}%;background:${c.color}"></span></div>
+      <div class="note" style="margin-top:4px">Last week ${money(b)} ${d ? `· <span class="delta ${d > 0 ? 'down' : 'up'}">${d > 0 ? '▲' : '▼'} ${money(Math.abs(d))}</span>` : ''}</div></span></div>`;
+  }).join('');
+
+  const totDiff = totNow - totLast;
+  $('#tab-insights').innerHTML = `
+    ${sampleBanner()}
+    <h1>Insights</h1>
+    <div class="card">
+      <h2>This week by category</h2>
+      ${!ids.length ? `<div class="empty">Add an expense to see your breakdown.</div>` : (typeof Chart === 'undefined' ? noCharts :
+        `<div class="donutwrap"><canvas id="chDonut" aria-label="Spending by category"></canvas><div class="donutc"><div class="muted small">spent</div><div class="big num">${money(totNow)}</div></div></div>`)}
+    </div>
+    <div class="card"><h2>Top category</h2>${topCard}</div>
+    <div class="card">
+      <h2>vs last week</h2>
+      <div class="kpis">
+        <div class="kpi"><div class="s">This week so far</div><div class="v num">${money(totNow)}</div><div class="s">${money(Math.round(totNow / daysIn))}/day avg</div></div>
+        <div class="kpi"><div class="s">All of last week</div><div class="v num">${money(totLast)}</div><div class="s">${money(Math.round(totLast / 7))}/day avg</div></div>
+      </div>
+      <div class="hint" style="font-size:14px">${totLast ? `Daily average is <b class="delta ${totNow / daysIn > totLast / 7 ? 'down' : 'up'}">${totNow / daysIn > totLast / 7 ? 'higher' : 'lower'}</b> than last week.` : ''}</div>
+      <div class="catlist" style="margin-top:10px">${catRows || ''}</div>
+    </div>`;
+
+  destroyChart('donut');
+  if (ids.length && chartsReady()){
+    charts.donut = new Chart($('#chDonut'), {
+      type: 'doughnut',
+      data: {labels: ids.map(i => cat(i).name), datasets: [{data: ids.map(i => now[i] / 100), backgroundColor: ids.map(i => cat(i).color), borderColor: css('--card'), borderWidth: 3, hoverOffset: 6}]},
+      options: {cutout: '68%', maintainAspectRatio: false, animation: {duration: 300},
+        plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => ` ${c.label}: S$${Number(c.raw).toFixed(2)} (${Math.round(c.raw * 100 / totNow * 100)}%)`}}}}
+    });
+  }
+}
+
+function renderSettings(){
+  const cur = weekStart(todaySG());
+  const curBudget = budgetFor(cur);
+  const cats = S.categories.map(c => `
+    <div class="catedit">
+      <span class="badge" style="background:${c.color};width:28px;height:28px;border-radius:9px"></span>
+      <input class="input" value="${esc(c.name)}" maxlength="24" data-rename="${c.id}" aria-label="Category name">
+      <button class="del" data-action="del-cat" data-id="${c.id}">Delete</button>
+    </div>`).join('');
+  $('#tab-settings').innerHTML = `
+    ${sampleBanner()}
+    <h1>Settings</h1>
+    <div class="card">
+      <h2>Weekly budget</h2>
+      <div class="field"><span style="font-family:var(--serif);font-size:20px;color:var(--muted)">S$</span>
+        <input id="budgetInput" class="input" inputmode="decimal" value="${(curBudget / 100).toFixed(2)}" aria-label="Weekly budget">
+        <button class="btn primary" data-action="save-budget">Save</button></div>
+      <div class="hint">A new amount applies from this week onward. Past weeks keep the budget they had.</div>
+    </div>
+    <div class="card">
+      <h2>Categories</h2>
+      ${cats}
+      <div class="field" style="margin-top:10px"><input id="newCat" class="input" placeholder="New category" maxlength="24"><button class="btn" data-action="add-cat">Add</button></div>
+      <div class="hint">Renaming saves automatically. Deleting moves its expenses to “Others”.</div>
+    </div>
+    <div class="card">
+      <h2>Backup</h2>
+      <div class="muted small">${mode === 'sample' ? 'Backups are turned off while viewing sample data.' : (S.lastBackup ? 'Last backup: ' + fWeekday.format(parseD(S.lastBackup)) : 'No backup yet.')} Data lives only on this device, so back up now and then.</div>
+      <div class="btnrow">
+        <button class="btn primary" data-action="export-json" ${mode === 'sample' ? 'disabled' : ''}>Export backup</button>
+        <button class="btn" data-action="import-json">Import backup</button>
+      </div>
+      <button class="btn block" style="margin-top:10px" data-action="export-csv">Export CSV (for spreadsheets)</button>
+    </div>
+    <div class="card">
+      <div class="setrow"><div><div style="font-weight:600">Show sample data</div><div class="hint" style="margin-top:2px">Preview with 12 weeks of made-up expenses. Your real data is kept separately.</div></div>
+      <label class="toggle"><input type="checkbox" id="sampleToggle" ${mode === 'sample' ? 'checked' : ''}><span></span></label></div>
+      ${mode === 'sample' ? `<button class="btn block" style="margin-top:12px" data-action="regen-sample">Regenerate sample data</button>` : ''}
+    </div>
+    <div class="card">
+      <h2>Danger zone</h2>
+      <button class="btn danger block" data-action="reset">Erase ${mode === 'sample' ? 'sample' : 'all'} data</button>
+    </div>
+    <div class="muted small" style="text-align:center;margin:10px 0 20px">Weekly Budget · weeks run Mon–Sun, Singapore time</div>`;
+}
+
+/* ---------- Add / edit sheet ---------- */
+function renderChips(){
+  $('#fCats').innerHTML = S.categories.map(c =>
+    `<button type="button" class="chip ${selCat === c.id ? 'sel' : ''}" role="radio" aria-checked="${selCat === c.id}" data-action="pick-cat" data-id="${c.id}"><i style="background:${c.color}"></i>${esc(c.name)}</button>`).join('');
+}
+function openSheet(id){
+  editingId = id || null;
+  const e = id ? S.expenses.find(x => x.id === id) : null;
+  $('#sheetTitle').textContent = e ? 'Edit expense' : 'Add expense';
+  $('#fAmount').value = e ? (e.amount / 100).toFixed(2) : '';
+  $('#fNote').value = e ? e.note : '';
+  const t = todaySG();
+  $('#fDate').max = t;
+  $('#fDate').value = e ? e.date : (viewWeek !== weekStart(t) ? addDays(viewWeek, 6) : t);
+  selCat = e ? e.catId : null;
+  $('#fDelete').style.display = e ? 'block' : 'none';
+  $('#fCats').classList.remove('err');
+  renderChips();
+  $('#backdrop').classList.add('open');
+  $('#sheet').classList.add('open');
+  if (!e) $('#fAmount').focus(); // opens the number keyboard right away (must happen inside the tap)
+}
+function closeSheet(){
+  $('#backdrop').classList.remove('open'); $('#sheet').classList.remove('open');
+  document.activeElement && document.activeElement.blur();
+  editingId = null;
+}
+function saveExpense(){
+  const amt = toCents($('#fAmount').value);
+  if (!(amt > 0) || amt > 10000000){ const el = $('#fAmount'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); el.focus(); toast('Enter an amount'); return; }
+  if (!selCat){ const el = $('#fCats'); el.classList.add('err'); el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); toast('Pick a category'); return; }
+  const date = $('#fDate').value || todaySG();
+  const note = $('#fNote').value.trim();
+  if (editingId){
+    const e = S.expenses.find(x => x.id === editingId);
+    Object.assign(e, {amount: amt, catId: selCat, note, date});
+    toast('Saved');
+  } else {
+    S.expenses.push({id: uid(), amount: amt, catId: selCat, note, date, createdAt: new Date().toISOString()});
+    toast(`Added ${money(amt)} · ${cat(selCat).name}`);
+  }
+  S.lastCatId = selCat;
+  save();
+  viewWeek = weekStart(date) <= weekStart(todaySG()) ? weekStart(date) : viewWeek;
+  closeSheet(); render();
+}
+function deleteExpense(){
+  const idx = S.expenses.findIndex(x => x.id === editingId);
+  if (idx < 0) return;
+  const [removed] = S.expenses.splice(idx, 1);
+  save(); closeSheet(); render();
+  toast('Expense deleted', () => { S.expenses.push(removed); save(); render(); toast('Restored'); });
+}
+
+/* ---------- Categories & budget ---------- */
+function nextColor(){ const used = new Set(S.categories.map(c => c.color)); return PALETTE.find(p => !used.has(p)) || PALETTE[S.categories.length % PALETTE.length]; }
+function addCat(){
+  const name = $('#newCat').value.trim();
+  if (!name) return;
+  if (S.categories.some(c => c.name.toLowerCase() === name.toLowerCase())){ toast('That category already exists'); return; }
+  S.categories.push({id: uid(), name, color: nextColor()});
+  save(); renderSettings(); toast('Category added');
+}
+function delCat(id){
+  if (S.categories.length <= 1){ toast('Keep at least one category'); return; }
+  const c = cat(id), n = S.expenses.filter(e => e.catId === id).length;
+  let target = S.categories.find(x => x.id !== id && x.name.toLowerCase() === 'others');
+  if (!confirm(n ? `Delete “${c.name}”? Its ${n} expense${n > 1 ? 's' : ''} will move to “Others”.` : `Delete “${c.name}”?`)) return;
+  if (n){
+    if (!target){ target = {id: uid(), name: 'Others', color: nextColor()}; S.categories.push(target); }
+    S.expenses.forEach(e => { if (e.catId === id) e.catId = target.id; });
+  }
+  S.categories = S.categories.filter(x => x.id !== id);
+  if (S.lastCatId === id) S.lastCatId = null;
+  save(); renderSettings(); toast('Category deleted');
+}
+function saveBudget(){
+  const amt = toCents($('#budgetInput').value);
+  if (!(amt > 0)){ toast('Enter a valid budget'); return; }
+  const cur = weekStart(todaySG());
+  S.budgets = S.budgets.filter(b => b.from !== cur);
+  S.budgets.push({from: cur, amount: amt});
+  save(); renderSettings(); toast('Weekly budget set to ' + money(amt));
+}
+
+/* ---------- Backup ---------- */
+async function shareOrDownload(filename, text, mime){
+  const blob = new Blob([text], {type: mime});
+  try {
+    const file = new File([blob], filename, {type: mime});
+    if (navigator.canShare && navigator.canShare({files: [file]})){
+      await navigator.share({files: [file], title: filename});
+      return true;
+    }
+  } catch(err){ if (err && err.name === 'AbortError') return false; }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return true;
+}
+async function exportJSON(){
+  if (mode === 'sample'){ toast('Exit sample data to back up your real data'); return; }
+  const ok = await shareOrDownload(`weekly-budget-backup-${todaySG()}.json`, JSON.stringify(S, null, 2), 'application/json');
+  if (ok){ S.lastBackup = todaySG(); S.reminderSnoozeUntil = null; save(); render(); toast('Backup exported'); }
+}
+function exportCSV(){
+  const q = s => '"' + String(s ?? '').replace(/"/g, '""') + '"';
+  const lines = [['Date', 'Week starting', 'Category', 'Amount (SGD)', 'Note'].join(',')];
+  [...S.expenses].sort((a, b) => a.date < b.date ? -1 : 1).forEach(e =>
+    lines.push([e.date, weekStart(e.date), q(cat(e.catId).name), (e.amount / 100).toFixed(2), q(e.note)].join(',')));
+  shareOrDownload(`weekly-budget-expenses-${todaySG()}.csv`, lines.join('\n'), 'text/csv');
+}
+function importJSON(file){
+  const r = new FileReader();
+  r.onload = () => {
+    let d;
+    try { d = JSON.parse(r.result); } catch(e){ toast('That file isn’t a valid backup'); return; }
+    if (!validState(d)){ toast('That file isn’t a valid backup'); return; }
+    if (!confirm(`Replace ${mode === 'sample' ? 'the sample' : 'all current'} data with this backup (${d.expenses.length} expenses)?`)) return;
+    S = d; save(); viewWeek = weekStart(todaySG()); render(); toast('Backup restored');
+  };
+  r.readAsText(file);
+}
+
+/* ---------- Sample data ---------- */
+function sampleState(){
+  const st = defaultState();
+  const cur = weekStart(todaySG()), t = todaySG();
+  st.startWeek = addDays(cur, -77);
+  st.createdAt = st.startWeek;
+  st.budgets = [{from: st.startWeek, amount: 15000}];
+  st.lastBackup = addDays(t, -12);
+  let seed = 20260921;
+  const rnd = () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; };
+  const pick = a => a[Math.floor(rnd() * a.length)];
+  const between = (a, b) => Math.round((a + rnd() * (b - a)) * 10) * 10; // cents, rounded to 10¢
+  const [FOOD, COFFEE, TRANS, SHOP, ENT, OTH] = st.categories.map(c => c.id);
+  for (let w = 0; w < 12; w++){
+    const wk = addDays(st.startWeek, 7 * w);
+    const splurge = rnd() < 0.3; // some weeks go over
+    for (let d = 0; d < 7; d++){
+      const date = addDays(wk, d);
+      if (date > t) break;
+      const add = (catId, amt, note) => st.expenses.push({id: uid(), amount: amt, catId, note, date, createdAt: date + 'T0' + d + ':00:00Z'});
+      if (rnd() < 0.7) add(COFFEE, between(4.5, 7), pick(['Flat white', 'Iced latte', 'Kopi C', 'Batch brew', 'Long black']));
+      if (rnd() < 0.8) add(FOOD, between(4, 12), pick(['Chicken rice', 'Economic rice', 'Laksa', 'Yong tau foo', 'Bento', 'Groceries']));
+      if (rnd() < 0.55) add(TRANS, rnd() < 0.15 ? between(11, 19) : between(1.2, 2.8), rnd() < 0.15 ? 'Grab home' : 'MRT');
+      if (d >= 4 && rnd() < 0.3) add(ENT, between(12, 30), pick(['Movie', 'Karaoke', 'Museum', 'Concert snacks']));
+      if (rnd() < (splurge ? 0.25 : 0.06)) add(SHOP, between(18, 55), pick(['Uniqlo', 'Film roll', 'Books', 'Plants', 'Shopee']));
+      if (rnd() < 0.05) add(OTH, between(5, 15), pick(['Gift', 'Stationery', 'Laundry']));
+    }
+  }
+  return st;
+}
+function setSample(on){
+  mode = on ? 'sample' : 'real';
+  lsSet(KEY_MODE, mode);
+  load(); viewWeek = weekStart(todaySG()); render();
+  toast(on ? 'Showing sample data' : 'Back to your data');
+}
+
+/* ---------- Toast ---------- */
+let toastTimer;
+function toast(msg, undo){
+  $('#toastMsg').textContent = msg;
+  const b = $('#toastAct');
+  b.style.display = undo ? 'inline' : 'none';
+  b.onclick = undo ? () => { $('#toast').classList.remove('show'); undo(); } : null;
+  $('#toast').classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('#toast').classList.remove('show'), undo ? 5000 : 2200);
+}
+
+/* ---------- Events ---------- */
+function switchTab(name){
+  currentTab = name;
+  document.querySelectorAll('.tab').forEach(s => s.classList.toggle('active', s.id === 'tab-' + name));
+  document.querySelectorAll('.tb').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  window.scrollTo(0, 0);
+  render();
+}
+document.addEventListener('click', (ev) => {
+  const tb = ev.target.closest('[data-tab]');
+  if (tb){ switchTab(tb.dataset.tab); return; }
+  const el = ev.target.closest('[data-action]');
+  if (!el) return;
+  const a = el.dataset.action, id = el.dataset.id;
+  switch (a){
+    case 'add': openSheet(); break;
+    case 'edit': openSheet(id); break;
+    case 'close-sheet': closeSheet(); break;
+    case 'save-expense': saveExpense(); break;
+    case 'delete-expense': deleteExpense(); break;
+    case 'pick-cat': selCat = id; $('#fCats').classList.remove('err'); renderChips(); break;
+    case 'prev-week': viewWeek = addDays(viewWeek, -7); renderWeek(); break;
+    case 'next-week': if (viewWeek < weekStart(todaySG())){ viewWeek = addDays(viewWeek, 7); renderWeek(); } break;
+    case 'save-budget': saveBudget(); break;
+    case 'add-cat': addCat(); break;
+    case 'del-cat': delCat(id); break;
+    case 'export-json': exportJSON(); break;
+    case 'export-csv': exportCSV(); break;
+    case 'import-json': $('#importFile').value = ''; $('#importFile').click(); break;
+    case 'snooze-backup': S.reminderSnoozeUntil = addDays(todaySG(), 7); save(); render(); break;
+    case 'sample-off': setSample(false); break;
+    case 'regen-sample': S = sampleState(); save(); render(); toast('New sample data'); break;
+    case 'reset':
+      if (confirm(`Erase ${mode === 'sample' ? 'sample' : 'ALL your'} data? This can’t be undone.`) && (mode === 'sample' || confirm('Really erase everything? Consider exporting a backup first.'))){
+        S = mode === 'sample' ? sampleState() : defaultState(); save(); viewWeek = weekStart(todaySG()); render(); toast('Data erased');
+      }
+      break;
+  }
+});
+document.addEventListener('change', (ev) => {
+  const t = ev.target;
+  if (t.id === 'sampleToggle') setSample(t.checked);
+  else if (t.id === 'importFile' && t.files[0]) importJSON(t.files[0]);
+  else if (t.dataset.rename){
+    const c = S.categories.find(x => x.id === t.dataset.rename), v = t.value.trim();
+    if (c && v && v !== c.name){ c.name = v; save(); toast('Renamed'); } else if (c) t.value = c.name;
+  }
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Enter'){
+    if (ev.target.id === 'fAmount' || ev.target.id === 'fNote'){ ev.preventDefault(); saveExpense(); }
+    else if (ev.target.id === 'newCat'){ ev.preventDefault(); addCat(); }
+    else if (ev.target.id === 'budgetInput'){ ev.preventDefault(); saveBudget(); }
+  } else if (ev.key === 'Escape') closeSheet();
+});
+
+// Keep the sheet above the iPhone keyboard
+if (window.visualViewport){
+  const fit = () => { const vv = window.visualViewport; $('#sheet').style.bottom = Math.max(0, window.innerHeight - vv.height - vv.offsetTop) + 'px'; };
+  visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', fit);
+}
+
+// Roll over automatically when a new day/week starts while the app is open or reopened
+function checkDay(){
+  const t = todaySG();
+  if (t !== lastToday){
+    const wasCur = viewWeek === weekStart(lastToday);
+    lastToday = t;
+    if (wasCur) viewWeek = weekStart(t);
+    render();
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden){ checkDay(); render(); } });
+setInterval(checkDay, 60000);
+
+// Redraw charts when switching light/dark
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => render());
+
+/* ---------- Boot ---------- */
+load();
+render();
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+if ('serviceWorker' in navigator && location.protocol !== 'file:'){
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+// Exposed for testing in the browser console
+window.__wkb = {ledger, weekStart, addDays, todaySG, budgetFor, get state(){ return S; }};
+</script>
+</body>
+</html>
